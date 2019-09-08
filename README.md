@@ -1,2 +1,2 @@
 # MIDS Capstone
-Repository for MIDS Capstone
+Repository for best MIDS Capstone ever

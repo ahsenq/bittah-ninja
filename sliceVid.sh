@@ -19,5 +19,5 @@ do
     filename="${vid}_slice${start}.mp4"
     filepath="$savedir/$filename"
     ffmpeg -i $1 -ss $start -t $duration $filepath
-    start=$(($start+6))
+    start=$(($start+$duration))
 done

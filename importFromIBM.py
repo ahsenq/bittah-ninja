@@ -18,8 +18,8 @@ from ibm_botocore.client import Config
 from tqdm import tqdm
 
 # %%
-cred_path = "/home/alex/Documents/MIDS/w210/FinalProject/w210-credentials.json"
-# cred_path = "/tmp/w210-credentials.json"
+# cred_path = "/home/alex/Documents/MIDS/w210/FinalProject/w210-credentials.json"
+cred_path = "/tmp/w210-credentials.json"
 with open(cred_path, "r") as f:
     creds = json.load(f)
 

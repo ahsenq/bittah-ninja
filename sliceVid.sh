@@ -6,7 +6,7 @@ n=$(echo "$n/1" | bc)
 
 # set parameters, extract filenames and paths, make a save directory
 start=0
-duration=6
+duration=5
 rootdir=$(echo $1 | cut -d"/" -f2)
 vid=$(echo $1 | cut -d"/" -f3)
 vid=$(echo $vid | cut -d"." -f1)

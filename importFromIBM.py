@@ -1,7 +1,6 @@
 # %% markdown
 # Importing video data from ibm COS
 
-import base64
 # %%
 import json
 import os
@@ -50,24 +49,17 @@ bucket = cos.Bucket('w210-finalproject')
 # %%
 files = list(bucket.objects.all())
 # %%
-# savepath = "/home/alex/Documents/MIDS/w210/FinalProject/tmp"
+# %%
 savepath = '/tmp/vids'
 os.makedirs(savepath, exist_ok=True)
-# %%
+filelist = os.listdir(savepath)
 for file in tqdm(files):
     ext = file.key.split('.')[-1]
     if 'mp4' not in ext and 'avi' not in ext:
         continue
-    filename = os.path.join(savepath, file.key.split('/')[-1])
-    bucket.download_file(file.key, filename)
-
-# %%
-vids = os.listdir(savepath)
-cap = cv2.VideoCapture(os.path.join(savepath, vids[0]))
-cap.isOpened()
-# %%
-_, frame = cap.read()
-gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-cv2.imshow('vid', gray)
-
-# %%
+    filename = file.key.split('/')[-1]
+    if filename in filelist:
+        continue
+    else:
+        filename = os.path.join(savepath, filename)
+        bucket.download_file(file.key, filename)

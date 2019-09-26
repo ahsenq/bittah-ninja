@@ -44,7 +44,7 @@ download the videos. You can either just run the download script, or run interac
 
 ```sh
 # option 1
-python3 importFromIBM.py
+python3 importFromIBM.py --path /path/where/to/save/the/vids
 # option 2
 jupyter lab --ip=0.0.0.0 --allow-root
 # then paste the link into your browser and change the ip to the ip of the VM

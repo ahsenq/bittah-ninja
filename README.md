@@ -52,3 +52,23 @@ jupyter lab --ip=0.0.0.0 --allow-root
 ```
 
 once the videos are downloaded, the data is ready to explore. You can play around with the readVideo notebook which has some starter code for reading in a video and converting it to a numpy array
+
+## Using sliceVids.sh
+This is very simple. install ffmpeg
+
+```sh
+sudo apt-get install ffmpeg
+```
+
+then `cd` to the directory with the script and run the script with the path to the file you want to slice as an argument
+
+```sh
+cd bittah-ninja
+sh sliceVids.sh /path/to/raw_video
+```
+
+once it is done slicing you will want to copy your sliced vids to the correct directory. On the VM we are storing them in `/root/vids/`
+
+```sh
+cp *_slice* /root/vids/
+```

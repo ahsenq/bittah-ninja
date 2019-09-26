@@ -8,6 +8,7 @@ import pickle
 import random
 import sys
 import time
+import argparse
 
 import cv2
 import ibm_boto3
@@ -17,8 +18,12 @@ from ibm_botocore.client import Config
 from tqdm import tqdm
 
 # %%
-# cred_path = "/home/alex/Documents/MIDS/w210/FinalProject/w210-credentials.json"
-cred_path = "/tmp/w210-credentials.json"
+parser = argparse.ArgumentParser()
+parser.add_argument('--path', help='path to save vids at')
+args = parser.parse_args()
+
+# %%
+cred_path = "/root/creds/w210-credentials.json"
 with open(cred_path, "r") as f:
     creds = json.load(f)
 
@@ -49,8 +54,7 @@ bucket = cos.Bucket('w210-finalproject')
 # %%
 files = list(bucket.objects.all())
 # %%
-# %%
-savepath = '/tmp/vids'
+savepath = args.path
 os.makedirs(savepath, exist_ok=True)
 filelist = os.listdir(savepath)
 for file in tqdm(files):

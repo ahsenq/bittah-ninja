@@ -5,17 +5,15 @@ n=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=
 n=$(echo "$n/1" | bc)
 
 # set parameters, extract filenames and paths, make a save directory
-start=0
-duration=5
-# rootdir=$(echo $1 | cut -d"/" -f2)
-# vid=$(echo $1 | cut -d"/" -f3)
-# vid=$(echo $vid | cut -d"." -f1)
-rootdir = $PWD
-vid = $(echo ${$1##*/})
+rootdir=$(echo $(dirname $1))
+vid=$(echo $(basename $1))
+vid=$(echo $vid | cut -d"." -f1)
 savedir="$rootdir/$vid"
 mkdir $savedir
 
-# slice into 10 second slices
+# slice into 5 second slices
+start=0
+duration=5
 while test $start -lt $n
 do
     filename="${vid}_slice${start}.mp4"

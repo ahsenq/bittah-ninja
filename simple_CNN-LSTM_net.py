@@ -63,6 +63,7 @@ def getMaxFrameCount(vidPath, df):
         frameCount.append(int(cap.get(cv2.CAP_PROP_FRAME_COUNT)))
 
     return max(frameCount)
+    # return frameCount
 
 
 def padEmptyFrames(vid, maxFrameCount):
@@ -96,10 +97,10 @@ def getFrames(filepath, maxFrameCount):
     return vid
 
 
-def extractData(vidPath, df, maxFrameCount):
+def extractData(vidPath, df, maxFrameCount, startRow, endRow):
     data = []
     labels = []
-    for _, row in tqdm(df.iterrows()):
+    for _, row in tqdm(df.iloc[startRow:endRow].iterrows()):
         vid = row.clip_title
         labels.append(row.punch)
         filepath = os.path.join(vidPath, vid)
@@ -110,11 +111,15 @@ def extractData(vidPath, df, maxFrameCount):
 
 
 # %%
-m = getMaxFrameCount(vidPath, df)
-m
-# %%
-data, labels = extractData(vidPath, df, m)
+maxFrameCount = getMaxFrameCount(vidPath, df)
+data, labels = extractData(vidPath, df, maxFrameCount, 0, 20)
+len(data), len(labels)
 
+# %%
+import sys
+sys.getsizeof(data)
+# %%
+sys.getsizeof(np.array(data))
 # %%
 try:
     with open('../allFrames.pickle', 'rb') as target:
@@ -122,8 +127,7 @@ try:
     if len(labels) != len(df.punch):
         maxFrameCount = getMaxFrameCount(vidPath, df)
         data, labels = extractData(vidPath, df, maxFrameCount)
-        # labels = np.array(labels)
-        # data = padEmptyFrames(data)
+        labels = np.array(labels)
         with open('../allFrames.pickle', 'wb') as f:
             pickle.dump((data, labels), f, protocol=pickle.HIGHEST_PROTOCOL)
 except:
@@ -134,18 +138,23 @@ except:
         pickle.dump((data, labels), f, protocol=pickle.HIGHEST_PROTOCOL)
 
 # %%
-data = padEmptyFrames(data)
-data.shape
-# paddedData = []
-# maxFrameSize = max([vid.shape[0] for vid in data])
-# for vid in data:
-#     numFrames = maxFrameSize - vid.shape[0]
-#     emptyFrames = np.zeros((numFrames, vid.shape[1], vid.shape[2]))
-#     # print(vid.shape, emptyFrames.shape)
-#     print(np.concatenate((vid, emptyFrames), axis=0).shape)
+maxFrameCount = getMaxFrameCount(vidPath, df)
+data, labels = extractData(vidPath, df, maxFrameCount)
+labels = np.array(labels)
+np.array(data).shape
 
-# paddedVid = np.concatenate(vid, emptyFrames)
-# paddedData.append(paddedVid)
+# %%
+import sys
+sys.getsizeof(data)
+# %%
+m = getMaxFrameCount(vidPath, df)
+sorted(m)
+# %%
+from collections import Counter
+c = Counter(m)
+c.most_common()
+
+
 # %%
 x_train, y_train, x_test, y_test = train_test_split(
     data, labels, test_size=0.2)

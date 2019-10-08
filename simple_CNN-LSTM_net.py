@@ -2,16 +2,20 @@
 import argparse
 import os
 import pickle
+import sys
+from collections import Counter
 
 import cv2
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from sklearn.model_selection import train_test_split
 from tensorflow.keras.layers import (Bidirectional, Conv2D, ConvLSTM2D, Dense,
                                      Dropout, Input, TimeDistributed)
 from tensorflow.keras.models import Sequential
-from sklearn.model_selection import train_test_split
+from tensorflow.keras.utils import Sequence
 from tqdm import tqdm
+from sklearn.model_selection import train_test_split
 
 try:
     os.chdir(os.path.join(os.getcwd(), 'FinalProject/bittah-ninja'))
@@ -49,116 +53,165 @@ try:
     vidPath = args.path
 except:
     vidPath = '../fullVidSet'
+filenames = [os.path.join(vidPath, f) for f in df.clip_title]
+labels = df.punch.tolist()
 
 # %%
-# def getDataFrame(labelPath):
 
 
-def getMaxFrameCount(vidPath, df):
+def getMaxFrameCount(filenames):
     frameCount = []
-    for _, row in tqdm(df.iterrows()):
-        vid = row.clip_title
-        filepath = os.path.join(vidPath, vid)
-        cap = cv2.VideoCapture(filepath)
+    for file in tqdm(filenames):
+        cap = cv2.VideoCapture(file)
         frameCount.append(int(cap.get(cv2.CAP_PROP_FRAME_COUNT)))
 
     return max(frameCount)
+
+
+class DataGenerator(Sequence):
+
+    def __init__(self, filenames, labels, batch_size, max_frame_count):
+        self.filenames = filenames
+        self.labels = labels
+        self.batch_size = batch_size
+        self.max_frame_count = max_frame_count
+
+    def __len__(self):
+        return np.ceil(len(self.filenames) / float(self.batch_size))
+
+    def __getitem__(self, idx):
+
+        def padEmptyFrames(vid):
+            num_frames = self.max_frame_count - vid.shape[0]
+            empty_frames = np.empty(
+                (num_frames, vid.shape[1], vid.shape[2]), dtype='uint8')
+            padded_vid = np.vstack((vid, empty_frames))
+
+            return padded_vid
+
+        def getFrames(filepath, pad_frames=True):
+            cap = cv2.VideoCapture(filepath)
+            vid = []
+            while cap.isOpened():
+                ret, frame = cap.read()
+                if ret:
+                    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                    # can try going bigger up to 720*1080 later
+                    gray = cv2.resize(gray, (224, 224))
+                    vid.append(gray)
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
+                else:
+                    break
+
+            cap.release()
+            vid = np.array(vid)
+            if pad_frames:
+                if vid.shape[0] < self.max_frame_count:
+                    vid = padEmptyFrames(vid)
+
+            return vid
+
+        x = self.filenames[idx * self.batch_size:(idx + 1) * self.batch_size]
+        y = self.labels[idx * self.batch_size:(idx + 1) * self.batch_size]
+
+        return np.array([getFrames(file) for file in x]), np.array(y)
+
+    # def extractData(filenames, max_frame_count, pad_frames=True):
+    #     data = []
+    #     labels = []
+    #     for _, row in tqdm(df.iterrows()):
+    #         vid = row.clip_title
+    #         labels.append(row.punch)
+    #         filepath = os.path.join(vidPath, vid)
+    #         vid = getFrames(filepath, max_frame_count, pad_frames=pad_frames)
+    #         data.append(vid)
+
+    #     return data, labels
+# %%
+# def getDataFrame(labelPath):
+
     # return frameCount
 
 
-def padEmptyFrames(vid, maxFrameCount):
-    numFrames = maxFrameCount - vid.shape[0]
-    emptyFrames = np.zeros((numFrames, vid.shape[1], vid.shape[2]))
-    paddedVid = np.vstack((vid, emptyFrames))
+# %%
+# Appendix
+# vid = df.clip_title[0]
+# filepath = os.path.join(vidPath, vid)
+# # %%
+# frames1 = getFrames(filepath, 229, pad_frames=False)
+# print(np.array(frames1).shape, sys.getsizeof(np.array(frames1)))
+# # %%
+# frames2 = getFrames(filepath, 229, pad_frames=True)
+# print(np.array(frames2).shape, sys.getsizeof(np.array(frames2)))
+# # %%
+# len(frames1) / len(frames2), sys.getsizeof(np.array(frames1)) / \
+#     sys.getsizeof(np.array(frames2))
+# # %%
+# testFrame = np.vstack((np.array(frames1), np.array(frames1)))
+# testFrame.shape, sys.getsizeof(testFrame)
+# # %%
+# z1 = np.zeros_like(np.array(frames1))
+# sys.getsizeof(z1)
+# # %%
+# sys.getsizeof(np.vstack((np.array(frames1), z1)))
+# # %%
+# z1.dtype
+# %%
+# max_frame_count = getMaxFrameCount(vidPath, df)
+# data, labels = extractData(vidPath, df, max_frame_count, pad_frames=True)
+# sys.getsizeof(data)  # sys.getsizeof(np.array(data))
+# # %%
+# max_frame_count = getMaxFrameCount(vidPath, df)
+# slicer = (0, 10)
+# data, labels = extractData(vidPath, df, max_frame_count,
+#                            slicer=slicer, pad_frames=True)
+# sys.getsizeof(data), sys.getsizeof(np.array(data))
+# %%
+# try:
+#     with open('../allFrames.pickle', 'rb') as target:
+#         data, labels = pickle.load(target)
+#     if len(labels) != len(df.punch):
+#         max_frame_count = getMaxFrameCount(vidPath, df)
+#         data, labels = extractData(vidPath, df, max_frame_count)
+#         data = np.array(data)
+#         labels = np.array(labels)
+#         with open('../allFrames.pickle', 'wb') as f:
+#             pickle.dump((data, labels), f, protocol=pickle.HIGHEST_PROTOCOL)
+# except:
+#     max_frame_count = getMaxFrameCount(vidPath, df)
+#     data, labels = extractData(vidPath, df, max_frame_count)
+#     data = np.array(data)
+#     labels = np.array(labels)
+#     with open('../allFrames.pickle', 'wb') as f:
+#         pickle.dump((data, labels), f, protocol=pickle.HIGHEST_PROTOCOL)
 
-    return paddedVid
+# %%
+# max_frame_count = getMaxFrameCount(vidPath, df)
+# data, labels = extractData(vidPath, df, max_frame_count)
+# labels = np.array(labels)
+# data = np.array(data)
 
+# sys.getsizeof(data)
 
-def getFrames(filepath, maxFrameCount):
-    cap = cv2.VideoCapture(filepath)
-    vid = []
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if ret:
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            # can try going bigger up to 720*1080 later
-            gray = cv2.resize(gray, (224, 224))
-            vid.append(gray)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-        else:
-            break
-
-    cap.release()
-    vid = np.array(vid)
-    if vid.shape[0] < maxFrameCount:
-        vid = padEmptyFrames(vid, maxFrameCount)
-
-    return vid
-
-
-def extractData(vidPath, df, maxFrameCount, startRow, endRow):
-    data = []
-    labels = []
-    for _, row in tqdm(df.iloc[startRow:endRow].iterrows()):
-        vid = row.clip_title
-        labels.append(row.punch)
-        filepath = os.path.join(vidPath, vid)
-        vid = getFrames(filepath, maxFrameCount)
-        data.append(vid)
-
-    return data, labels
+# c = Counter(m)
+# c.most_common()
 
 
 # %%
-maxFrameCount = getMaxFrameCount(vidPath, df)
-data, labels = extractData(vidPath, df, maxFrameCount, 0, 20)
-len(data), len(labels)
+x_train, x_test, y_train, y_test = train_test_split(
+    filenames, labels, test_size=0.2)
+print(len(x_train), len(y_train))
+print(len(x_test), len(y_test))
 
 # %%
-import sys
-sys.getsizeof(data)
-# %%
-sys.getsizeof(np.array(data))
-# %%
-try:
-    with open('../allFrames.pickle', 'rb') as target:
-        data, labels = pickle.load(target)
-    if len(labels) != len(df.punch):
-        maxFrameCount = getMaxFrameCount(vidPath, df)
-        data, labels = extractData(vidPath, df, maxFrameCount)
-        labels = np.array(labels)
-        with open('../allFrames.pickle', 'wb') as f:
-            pickle.dump((data, labels), f, protocol=pickle.HIGHEST_PROTOCOL)
-except:
-    maxFrameCount = getMaxFrameCount(vidPath, df)
-    data, labels = extractData(vidPath, df, maxFrameCount)
-    labels = np.array(labels)
-    with open('../allFrames.pickle', 'wb') as f:
-        pickle.dump((data, labels), f, protocol=pickle.HIGHEST_PROTOCOL)
+m = getMaxFrameCount(filenames)
+train_generator = DataGenerator(x_train, y_train, 10, m)
+test_generator = DataGenerator(x_test, y_test, 10, m)
 
 # %%
-maxFrameCount = getMaxFrameCount(vidPath, df)
-data, labels = extractData(vidPath, df, maxFrameCount)
-labels = np.array(labels)
-np.array(data).shape
+batch_size = 10
 
-# %%
-import sys
-sys.getsizeof(data)
-# %%
-m = getMaxFrameCount(vidPath, df)
-sorted(m)
-# %%
-from collections import Counter
-c = Counter(m)
-c.most_common()
-
-
-# %%
-x_train, y_train, x_test, y_test = train_test_split(
-    data, labels, test_size=0.2)
-x_train.shape, y_train.shape, x_test.shape, y_test.shape
 
 # %%
 # model = Sequential()
@@ -186,12 +239,13 @@ model.compile(optimizer='adam',
 # model.summary()
 
 # %%
-model.fit(x_train,
-          y_train,
-          validation_data=(x_test, y_test),
-          epochs=1,
-          batch_size=16,
-          class_weight=class_weight)
+model.fit_generator(generator=train_generator,
+                    steps_per_epoch=(len(x_train) // batch_size),
+                    epochs=1,
+                    verbose=1,
+                    validation_data=test_generator,
+                    validation_steps=(len(x_test) // batch_size),
+                    class_weight=class_weight)
 
 # %%
 # seq = Sequential()

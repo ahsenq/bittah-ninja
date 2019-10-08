@@ -239,13 +239,14 @@ model.compile(optimizer='adam',
 # model.summary()
 
 # %%
-model.fit_generator(generator=train_generator,
-                    steps_per_epoch=(len(x_train) // batch_size),
-                    epochs=1,
-                    verbose=1,
-                    validation_data=test_generator,
-                    validation_steps=(len(x_test) // batch_size),
-                    class_weight=class_weight)
+hist = model.fit_generator(generator=train_generator,
+                           steps_per_epoch=(len(x_train) // batch_size),
+                           epochs=1,
+                           verbose=1,
+                           validation_data=test_generator,
+                           validation_steps=(len(x_test) // batch_size),
+                           class_weight=class_weight,
+                           use_multiprocessing=True)
 
 # %%
 # seq = Sequential()

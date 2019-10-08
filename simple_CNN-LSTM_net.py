@@ -160,4 +160,4 @@ hist = model.fit_generator(generator=train_generator,
                            validation_data=test_generator,
                            validation_steps=(len(x_test) // batch_size),
                            class_weight=class_weight,
-                           use_multiprocessing=True)
+                           use_multiprocessing=False)

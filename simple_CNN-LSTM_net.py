@@ -132,13 +132,13 @@ train_generator = DataGenerator(x_train, y_train, 10, m)
 test_generator = DataGenerator(x_test, y_test, 10, m)
 len(train_generator), len(test_generator)
 # %%
-batch_size = 10
+batch_size = 2
 class_weight = {
     0: 0.33,
     1: 0.67
 }
 model = Sequential()
-model.add(Bidirectional(ConvLSTM2D(filters=64,
+model.add(Bidirectional(ConvLSTM2D(filters=2,
                                    kernel_size=(3, 3),
                                    input_shape=(None, 224, 224, 1),
                                    padding='same',

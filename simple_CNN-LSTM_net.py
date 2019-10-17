@@ -29,10 +29,11 @@ parser.add_argument('-e', '--epochs', help='number of epochs')
 parser.add_argument('-b, --batchsize', help='size of the batch')
 
 # %%
-try:
-    args = parser.parse_args()
-except:
-    pass
+args = parser.parse_args()
+# try:
+#     args = parser.parse_args()
+# except:
+#     pass
 
 # %%
 labelPath = 'first_1k_labeled.csv'

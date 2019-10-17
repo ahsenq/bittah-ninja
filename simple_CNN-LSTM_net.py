@@ -26,7 +26,7 @@ except:
 parser = argparse.ArgumentParser()
 parser.add_argument('-p', '--path', help='path to video set')
 parser.add_argument('-e', '--epochs', help='number of epochs')
-parser.add_argument('-b, --batch_size', help='size of the batch')
+parser.add_argument('-b, --batchsize', help='size of the batch')
 
 # %%
 try:
@@ -150,8 +150,8 @@ class DataGenerator(Sequence):
 
 
 # %%
-if args.batch_size:
-    batch_size = args.batch_size
+if args.batchsize:
+    batch_size = args.batchsize
 else:
     batch_size = 10
 # TODO: re-examine with full dataset

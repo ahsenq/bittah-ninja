@@ -26,14 +26,13 @@ except:
 parser = argparse.ArgumentParser()
 parser.add_argument('-p', '--path', help='path to video set')
 parser.add_argument('-e', '--epochs', help='number of epochs')
-parser.add_argument('-b, --batchsize', help='size of the batch')
+parser.add_argument('-b', '--batch_size', help='size of the batch')
 
 # %%
-args = parser.parse_args()
-# try:
-#     args = parser.parse_args()
-# except:
-#     pass
+try:
+    args = parser.parse_args()
+except:
+    pass
 
 # %%
 labelPath = 'first_1k_labeled.csv'
@@ -151,8 +150,8 @@ class DataGenerator(Sequence):
 
 
 # %%
-if args.batchsize:
-    batch_size = args.batchsize
+if args.batch_size:
+    batch_size = args.batch_size
 else:
     batch_size = 10
 # TODO: re-examine with full dataset

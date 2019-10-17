@@ -121,7 +121,7 @@ class DataGenerator(Sequence):
         # x = x.reshape(self.batch_size, self.max_frame_count, 224, 224, 1)
         b, f, w, h = x.shape
         x = x.reshape(b, f, w, h, 1)
-        print(x.shape)
+        # print(x.shape)
 
         return x, np.array(y)
 
@@ -172,10 +172,12 @@ def getFrames(filepath, max_frame_count, pad_frames=True):
 m = getMaxFrameCount(filenames)
 batch_size = 10
 idx = 0
-x = filenames[idx * batch_size:(idx + 1) * batch_size]
-y = labels[idx * batch_size:(idx + 1) * batch_size]
+# x = filenames[idx * batch_size:(idx + 1) * batch_size]
+# y = labels[idx * batch_size:(idx + 1) * batch_size]
+x = filenames
+y = labels
 
-x = np.array([getFrames(file, m) for file in x]) / 255
+x = np.array([getFrames(file, m) for file in tqdm(x)]) / 255
 # x = x.reshape(self.batch_size, self.max_frame_count, 224, 224, 1)
 b, f, w, h = x.shape
 x = x.reshape(b, f, w, h, 1)
@@ -197,12 +199,24 @@ model = Sequential()
 #                      input_shape=(None, 20, 20, 1),
 #                      batch_size=batch_size, data_format='channels_last',
 #                      padding='same', return_sequences=True))
-model.add(ConvLSTM2D(filters=40, kernel_size=(3, 3),
+model.add(ConvLSTM2D(filters=64, kernel_size=(4, 4),
                      input_shape=(None, 20, 20, 1),
                      batch_size=batch_size, data_format='channels_last',
-                     padding='same', return_sequences=False))
+                     padding='same', return_sequences=True,
+                     dropout=0.2, recurrent_dropout=0.3))
+model.add(BatchNormalization())
+model.add(ConvLSTM2D(filters=32, kernel_size=(3, 3),
+                     padding='same', return_sequences=True,
+                     dropout=0.2, recurrent_dropout=0.3))
+model.add(BatchNormalization())
+model.add(ConvLSTM2D(filters=32, kernel_size=(3, 3),
+                     padding='same', return_sequences=False,
+                     dropout=0.2, recurrent_dropout=0.3))
 model.add(BatchNormalization())
 model.add(Flatten())
+model.add(Dropout(0.3))
+model.add(Dense(128, activation='relu'))
+model.add(Dense(64, activation='relu'))
 model.add(Dense(1, activation='sigmoid'))
 
 # model.add(ConvLSTM2D(filters=40, kernel_size=(3, 3),

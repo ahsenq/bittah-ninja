@@ -23,7 +23,8 @@ parser.add_argument('--path', help='path to save vids at')
 args = parser.parse_args()
 
 # %%
-cred_path = "/root/creds/w210-credentials.json"
+# cred_path = "/root/creds/w210-credentials.json"
+cred_path = "../creds/w210-credentials.json"
 with open(cred_path, "r") as f:
     creds = json.load(f)
 

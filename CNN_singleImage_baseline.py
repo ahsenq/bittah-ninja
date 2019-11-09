@@ -29,7 +29,8 @@ except:
     args = parser.parse_args([])
 
 # %%
-labelPath = 'bittah-ninja/first_1k_labeled_long_vids_removed.csv'
+# labelPath = 'bittah-ninja/first_1k_labeled_long_vids_removed.csv'
+labelPath = 'first_1k_labeled_long_vids_removed.csv'
 # labelPath = 'full_labels.csv'
 df = pd.read_csv(labelPath)
 new_files = []
@@ -45,14 +46,17 @@ df.groupby('label').size()
 df = df.loc[df.label != -1]
 df.groupby('label').size()
 # %%
-df['punch'] = (df.label != 0).astype('int')
-df.groupby('punch').size()
+df.shape
+# %%
+# df['punch'] = (df.label != 0).astype('int')
+# df.groupby('punch').size()
 
 # %%
 vidPath = args.vidpath
 filenames = [f.split('.mp4')[0] + '_scaled.mp4' for f in df.clip_title]
 filenames = [os.path.join(vidPath, f) for f in filenames]
-labels = df.punch.tolist()
+# labels = df.punch.tolist()
+labels = df.label.tolist()
 
 # %%
 # def getMaxFrameCount(filenames):
@@ -70,14 +74,12 @@ class DataGenerator(Sequence):
                  filenames,
                  labels,
                  batch_size,
-                 #  max_frame_count,
                  frame_height=224,
                  frame_width=224,
                  n_channels=1):
         self.filenames = filenames
         self.labels = labels
         self.batch_size = batch_size
-        # self.max_frame_count = max_frame_count
         self.h = frame_height
         self.w = frame_width
         self.n_channels = n_channels
@@ -117,33 +119,25 @@ class DataGenerator(Sequence):
                                   self.n_channels)
             x[i, ] = frame
             y[i, ] = self.labels[idx]
-            # y = tf.keras.utils.to_categorical(y,
-            #                                   num_classes=self.n_classes,
-            #                                   dtype='float16')
+            y = tf.keras.utils.to_categorical(y,
+                                              num_classes=len(set(self.labels)),
+                                              dtype='float16')
         # print(x.shape, y.shape)
         return x, y
+        # yield x, y
 
     def __getitem__(self, idx):
         batch = range(idx * self.batch_size, (idx + 1) * self.batch_size)
         x, y = self.__data_generation(batch)
         return x, y
+        # yield x, y
 
 
 # %%
-# if args.batch_size:
-#     batch_size = args.batch_size
-# else:
-batch_size = 4
-# TODO: re-examine with full dataset
-class_weight = {
-    0: 0.25,
-    1: 0.75
-}
-# frame_height = 20
-# frame_width = 20
-# frame_height = 224
-# frame_width = 224
-# n_channels = 1
+batch_size = args.batch_size
+labels_counts = Counter(labels)
+# TODO: Not sure if this should be 1 - x or x
+class_weight = {k:1-(v/len(labels)) for k,v in labels_counts.items()}
 # %%
 x_train, x_test, y_train, y_test = train_test_split(
     filenames, labels, test_size=0.2)
@@ -159,32 +153,33 @@ test_generator = DataGenerator(x_test,
                                batch_size)
 len(train_generator), len(test_generator)
 # %%
+# lab, batch = next(train_generator)
+# %%
+
+# %%
+
+# %%
 input_shape = (224, 224, 1)
 epochs = args.epochs
-model = Sequential()
-model.add(Conv2D(32, (3, 3), padding='same',
-                 input_shape=input_shape))
-model.add(Activation('relu'))
-model.add(Conv2D(32, (3, 3)))
-model.add(Activation('relu'))
-model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Dropout(0.25))
+# model = Sequential()
+inputs = keras.layers.Input(shape=input_shape, name='inputs')
+conv = Conv2D(32, (3, 3), activation='relu', padding='same')(inputs)
+pool = MaxPooling2D(pool_size=(2, 2))(conv)
+conv = Conv2D(32, (3, 3), activation='relu', padding='same')(pool)
+pool = MaxPooling2D(pool_size=(2, 2))(conv)
+# dropout = Dropout(0.25)(pool)
+conv = Conv2D(32, (4, 4), activation='relu', padding='same')(pool)
+pool = MaxPooling2D(pool_size=(2, 2))(conv)
+conv = Conv2D(32, (4, 4), activation='relu', padding='same')(pool)
+pool = MaxPooling2D(pool_size=(2, 2))(conv)
+dropout = Dropout(0.25)(pool)
+flat = Flatten()(dropout)
+dense = Dense(16, activation='relu')(flat)
+dropout = Dropout(0.25)(dense)
+outputs = Dense(len(set(labels)), activation='softmax', name='outputs')(dropout)
+model = Model(inputs, outputs)
 
-# model.add(Conv2D(64, (3, 3), padding='same'))
-# model.add(Activation('relu'))
-# model.add(Conv2D(64, (3, 3)))
-# model.add(Activation('relu'))
-# model.add(MaxPooling2D(pool_size=(2, 2)))
-# model.add(Dropout(0.25))
-
-model.add(Flatten())
-model.add(Dense(4))
-model.add(Activation('relu'))
-model.add(Dropout(0.5))
-model.add(Dense(1))
-model.add(Activation('sigmoid'))
-
-model.compile(loss='binary_crossentropy', optimizer='adadelta')
+model.compile(loss='categorical_crossentropy', optimizer='adam')
 model.summary()
 
 

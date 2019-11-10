@@ -35,11 +35,11 @@ except:
     pass
 
 # %%
-labelPath = 'first_1k_labeled.csv'
+labelPath = 'first_1k_labeled_long_vids_removed.csv'
 # labelPath = 'full_labels.csv'
 df = pd.read_csv(labelPath)
-df['label'] = df['class']
-df.drop(columns=['class'], inplace=True)
+# df['label'] = df['class']
+# df.drop(columns=['class'], inplace=True)
 df.groupby('label').size()
 
 # %%
@@ -50,10 +50,11 @@ df['punch'] = (df.label != 0).astype('int')
 df.groupby('punch').size()
 
 # %%
-if args.path:
-    vidPath = args.path
-else:
-    vidPath = '../fullVidSet'
+# if args.path:
+#     vidPath = args.path
+# else:
+#     vidPath = '../fullVidSet'
+vidPath = '../vids'
 filenames = [os.path.join(vidPath, f) for f in df.clip_title]
 labels = df.punch.tolist()
 
@@ -150,17 +151,17 @@ class DataGenerator(Sequence):
 
 
 # %%
-if args.batch_size:
-    batch_size = args.batch_size
-else:
-    batch_size = 10
+# if args.batch_size:
+#     batch_size = args.batch_size
+# else:
+batch_size = 10
 # TODO: re-examine with full dataset
 class_weight = {
     0: 0.33,
     1: 0.67
 }
-frame_height = 64
-frame_width = 64
+frame_height = 20
+frame_width = 20
 # frame_height = 224
 # frame_width = 224
 n_channels = 1
@@ -188,10 +189,10 @@ test_generator = DataGenerator(x_test,
 len(train_generator), len(test_generator)
 # %%
 input_shape = (None, frame_width, frame_height, n_channels)
-if args.epochs:
-    epochs = args.epochs
-else:
-    epochs = 1
+# if args.epochs:
+#     epochs = args.epochs
+# else:
+epochs = 1
 class_weight = {
     0: 0.33,
     1: 0.67
@@ -199,8 +200,7 @@ class_weight = {
 
 model = Sequential()
 model.add(ConvLSTM2D(filters=64, kernel_size=(4, 4),
-                     input_shape=input_shape,
-                     batch_size=batch_size, data_format='channels_last',
+                     input_shape=input_shape, data_format='channels_last',
                      padding='same', return_sequences=False,
                      dropout=0.2, recurrent_dropout=0.3))
 model.add(BatchNormalization())

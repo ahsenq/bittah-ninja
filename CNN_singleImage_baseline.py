@@ -199,7 +199,7 @@ es = keras.callbacks.EarlyStopping(
     monitor='val_loss', patience=10, restore_best_weights=True)
 hist = model.fit_generator(generator=train_generator,
                            steps_per_epoch=(len(x_train) // batch_size),
-                           epochs=100,
+                           epochs=args.epochs,
                            verbose=1,
                            validation_data=test_generator,
                            validation_steps=(len(x_test) // batch_size),

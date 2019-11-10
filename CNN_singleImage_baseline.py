@@ -34,7 +34,7 @@ print("GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU'
 # %%
 parser = argparse.ArgumentParser()
 parser.add_argument('--vidpath', default='vids/scaled')
-parser.add_argument('--epochs', default=10, type=int)
+parser.add_argument('--epochs', default=100, type=int)
 parser.add_argument('--batch_size', default=32, type=int)
 try:
     args = parser.parse_args()
@@ -43,11 +43,6 @@ except:
     #     args = parser.parse_args(['--vidpath=/tf/data/vids/scaled', '--batch_size=4'])
     args = parser.parse_args(['--vidpath=/data/vids/scaled'])
 print(args.vidpath, args.epochs)
-
-
-# %%
-get_ipython().system('pwd')
-
 
 # %%
 # labelPath = 'bittah-ninja/first_1k_labeled_long_vids_removed.csv'

@@ -44,7 +44,7 @@ except:
     # may need to modify vidpath depending on where you are running the script
     #     args = parser.parse_args(['--vidpath=/tf/data/vids/scaled', '--batch_size=4'])
     args = parser.parse_args(['--vidpath=/data/vids/scaled', '--use_cache'])
-print(args.vidpath, args.epochs)
+print(args)
 
 # %%
 # labelPath = 'bittah-ninja/first_1k_labeled_long_vids_removed.csv'

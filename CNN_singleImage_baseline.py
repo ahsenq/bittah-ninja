@@ -134,7 +134,8 @@ if __name__ == "__main__":
     # df.groupby('punch').size()
     # %%
     vidPath = args.vidpath
-    filenames = [f.split('.mp4')[0] + '_scaled.mp4' for f in df.clip_title]
+#     filenames = [f.split('.mp4')[0] + '_scaled.mp4' for f in df.clip_title]
+    filenames = [''.join(f.split('.mp4')) + '_scaled.mp4' for f in df.clip_title]
     filenames = [os.path.join(vidPath, f) for f in filenames]
     # labels = df.punch.tolist()
     labels = df.label.tolist()

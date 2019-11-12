@@ -98,6 +98,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--vidpath', default='vids/scaled')
     parser.add_argument('--modelpath', default='/data/models')
+    parser.add_argument('--labelpath', default='week10_labeled.csv')
     parser.add_argument('--epochs', default=100, type=int)
     parser.add_argument('--batch_size', default=32, type=int)
     parser.add_argument('--use_cache', action='store_true', default=False)
@@ -111,7 +112,7 @@ if __name__ == "__main__":
 
     # %%
     # labelPath = 'bittah-ninja/first_1k_labeled_long_vids_removed.csv'
-    labelPath = 'week10_labeled.csv'
+    labelPath = args.labelpath
     # labelPath = 'full_labels.csv'
     df = pd.read_csv(labelPath)
     df.head()
@@ -134,8 +135,7 @@ if __name__ == "__main__":
     # df.groupby('punch').size()
     # %%
     vidPath = args.vidpath
-#     filenames = [f.split('.mp4')[0] + '_scaled.mp4' for f in df.clip_title]
-    filenames = [''.join(f.split('.mp4')) + '_scaled.mp4' for f in df.clip_title]
+    filenames = [f.split('.mp4')[0] + '_scaled.mp4' for f in df.clip_title]
     filenames = [os.path.join(vidPath, f) for f in filenames]
     # labels = df.punch.tolist()
     labels = df.label.tolist()

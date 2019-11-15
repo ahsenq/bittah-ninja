@@ -66,7 +66,6 @@ class DataGenerator(Sequence):
                 ret, frame = cap.read()
                 if ret:
                     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                    # can try going bigger up to 720*1080 later
                     gray = cv2.resize(gray, (self.h, self.w))
                     vid.append(gray)
                     if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -97,10 +96,8 @@ class DataGenerator(Sequence):
                               self.n_channels)
             x[i, ] = vid
             y[i, ] = self.labels[idx]
-            # y = tf.keras.utils.to_categorical(y,
-            #                                   num_classes=self.n_classes,
-            #                                   dtype='float16')
-        # print(x.shape, y.shape)
+        y = tf.keras.utils.to_categorical(
+            y, num_classes=len(set(self.labels)), dtype='float16')
         return x, y
 
     def __getitem__(self, idx):

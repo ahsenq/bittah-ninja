@@ -10,18 +10,16 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
-from keras.layers import ConvLSTM2D, BatchNormalization, Dense, Flatten, Dropout
-from keras.models import Sequential, Model
-from keras.utils import Sequence
+from sklearn.utils.class_weight import compute_class_weight
+from tensorflow.keras.layers import (BatchNormalization, ConvLSTM2D, Dense,
+                                     Dropout, Flatten)
+from tensorflow.keras.models import Model, Sequential
+from tensorflow.keras.utils import Sequence
 from tqdm import tqdm
-from sklearn.model_selection import train_test_split
-
-assert tf.__version__.startswith('2'), 'you need to upgrade to tensorflow 2'
-gpus = tf.config.experimental.list_physical_devices('GPU')
-for gpu in gpus:
-    tf.config.experimental.set_memory_growth(gpu, True)
 
 # %%
+
+
 def getMaxFrameCount(filenames):
     frameCount = []
     for file in tqdm(filenames):
@@ -110,8 +108,14 @@ class DataGenerator(Sequence):
         x, y = self.__data_generation(batch)
         return x, y
 
+
 # %%
 if __name__ == "__main__":
+    assert tf.__version__.startswith(
+        '2'), 'you need to upgrade to tensorflow 2'
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    for gpu in gpus:
+        tf.config.experimental.set_memory_growth(gpu, True)
     parser = argparse.ArgumentParser()
     parser.add_argument('--vidpath', default='vids/scaled')
     parser.add_argument('--modelpath', default='/data/models')
@@ -122,9 +126,8 @@ if __name__ == "__main__":
     try:
         args = parser.parse_args()
     except:
-        # may need to modify vidpath depending on where you are running the script
-        #     args = parser.parse_args(['--vidpath=/tf/data/vids/scaled', '--batch_size=4'])
-        args = parser.parse_args(['--vidpath=/data/vids/scaled', '--use_cache'])
+        args = parser.parse_args(
+            ['--vidpath=/data/vids/scaled', '--use_cache'])
     print(args)
 
     labelPath = args.labelpath
@@ -144,154 +147,77 @@ if __name__ == "__main__":
     df = df.loc[df.label != 99]
     df.groupby('label').size()
 
-    vidPath = '../vids'
-    filenames = [os.path.join(vidPath, f) for f in df.clip_title]
-    labels = df.punch.tolist()
+    vidPath = args.vidpath
+    filenames = [f.split('.mp4')[0] + '_scaled.mp4' for f in df.clip_title]
+    filenames = [os.path.join(vidPath, f) for f in filenames]
+    labels = df.label.tolist()
+    batch_size = args.batch_size
+    class_weight = compute_class_weight('balanced', np.unique(labels), labels)
 
+    if args.use_cache:
+        print('using cached train and test sets')
+        with open(os.path.join(args.modelpath, f'train.pickle'), 'rb') as f:
+            x_train, y_train = pickle.load(f)
+        with open(os.path.join(args.modelpath, f'test.pickle'), 'rb') as f:
+            x_test, y_test = pickle.load(f)
+    else:
+        x_train, x_test, y_train, y_test = train_test_split(
+            filenames, labels, test_size=0.2)
 
+        modelpath = args.modelpath
+        os.makedirs(modelpath, exist_ok=True)
+        with open(os.path.join(modelpath, f'train.pickle'), 'wb') as f:
+            pickle.dump((x_train, y_train), f, protocol=-1)
+        with open(os.path.join(modelpath, f'test.pickle'), 'wb') as f:
+            pickle.dump((x_test, y_test), f, protocol=-1)
 
-
-
-
-    # %%
-    # if args.batch_size:
-    #     batch_size = args.batch_size
-    # else:
-    batch_size = 10
-    # TODO: re-examine with full dataset
-    class_weight = {
-        0: 0.33,
-        1: 0.67
-    }
-    frame_height = 20
-    frame_width = 20
-    # frame_height = 224
-    # frame_width = 224
-    n_channels = 1
-    # %%
-    x_train, x_test, y_train, y_test = train_test_split(
-        filenames, labels, test_size=0.2)
     print(len(x_train), len(y_train))
     print(len(x_test), len(y_test))
-    # %%
+
     max_frame_count = getMaxFrameCount(filenames)
     train_generator = DataGenerator(x_train,
                                     y_train,
                                     batch_size,
-                                    max_frame_count,
-                                    frame_height,
-                                    frame_width,
-                                    n_channels)
+                                    max_frame_count)
     test_generator = DataGenerator(x_test,
-                                y_test,
-                                batch_size,
-                                max_frame_count,
-                                frame_height,
-                                frame_width,
-                                n_channels)
+                                   y_test,
+                                   batch_size,
+                                   max_frame_count)
     len(train_generator), len(test_generator)
-    # %%
-    input_shape = (None, frame_width, frame_height, n_channels)
-    # if args.epochs:
-    #     epochs = args.epochs
-    # else:
-    epochs = 1
-    class_weight = {
-        0: 0.33,
-        1: 0.67
-    }
+
+    input_shape = (None,
+                   train_generator.frame_width,
+                   train_generator.frame_height,
+                   train_generator.n_channels)
+
+    epochs = args.epochs
 
     model = Sequential()
-    model.add(ConvLSTM2D(filters=64, kernel_size=(4, 4),
-                        input_shape=input_shape, data_format='channels_last',
-                        padding='same', return_sequences=False,
-                        dropout=0.2, recurrent_dropout=0.3))
+    model.add(ConvLSTM2D(filters=4, kernel_size=(4, 4),
+                         input_shape=input_shape, data_format='channels_last',
+                         padding='same', return_sequences=True,
+                         dropout=0.5, recurrent_dropout=0))
     model.add(BatchNormalization())
-    # model.add(ConvLSTM2D(filters=32, kernel_size=(3, 3),
-    #                      padding='same', return_sequences=True,
-    #                      dropout=0.2, recurrent_dropout=0.3))
-    # model.add(BatchNormalization())
-    # model.add(ConvLSTM2D(filters=32, kernel_size=(3, 3),
-    #                      padding='same', return_sequences=False,
-    #                      dropout=0.2, recurrent_dropout=0.3))
-    # model.add(BatchNormalization())
+    model.add(ConvLSTM2D(filters=4, kernel_size=(3, 3),
+                         padding='same', return_sequences=True,
+                         dropout=0.5, recurrent_dropout=0))
+    model.add(BatchNormalization())
+    model.add(ConvLSTM2D(filters=4, kernel_size=(3, 3),
+                         padding='same', return_sequences=False,
+                         dropout=0.5, recurrent_dropout=0))
+    model.add(BatchNormalization())
     model.add(Flatten())
-    model.add(Dropout(0.3))
-    # model.add(Dense(128, activation='relu'))
-    # model.add(Dense(64, activation='relu'))
+    model.add(Dense(32, activation='relu'))
+    model.add(Dense(32, activation='relu'))
     model.add(Dense(1, activation='sigmoid'))
-    model.compile(loss='binary_crossentropy', optimizer='adadelta')
+    model.compile(loss='categorical_crossentropy', optimizer='adadelta')
     model.summary()
 
-    # %%
     hist = model.fit_generator(generator=train_generator,
-                            steps_per_epoch=(len(x_train) // batch_size),
-                            epochs=1,
-                            verbose=1,
-                            validation_data=test_generator,
-                            validation_steps=(len(x_test) // batch_size),
-                            class_weight=class_weight,
-                            use_multiprocessing=False)
-
-    # %%
-    # Appendix
-
-
-    def padEmptyFrames(vid, max_frame_count):
-        num_frames = max_frame_count - vid.shape[0]
-        empty_frames = np.empty(
-            (num_frames, vid.shape[1], vid.shape[2]), dtype='uint8')
-        padded_vid = np.vstack((vid, empty_frames))
-
-        return padded_vid
-
-
-    def getFrames(filepath, max_frame_count, pad_frames=True):
-        # print(filepath)
-        cap = cv2.VideoCapture(filepath)
-        vid = []
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if ret:
-                gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                # can try going bigger up to 720*1080 later
-                # gray = cv2.resize(gray, (224, 224))
-                gray = cv2.resize(gray, (20, 20))
-                vid.append(gray)
-                if cv2.waitKey(1) & 0xFF == ord('q'):
-                    break
-            else:
-                break
-
-        cap.release()
-        vid = np.array(vid)
-        if pad_frames:
-            if vid.shape[0] < max_frame_count:
-                vid = padEmptyFrames(vid, max_frame_count)
-
-        return vid
-
-
-    m = getMaxFrameCount(filenames)
-    batch_size = 10
-    idx = 0
-    # x = filenames[idx * batch_size:(idx + 1) * batch_size]
-    # y = labels[idx * batch_size:(idx + 1) * batch_size]
-    x = filenames
-    y = labels
-
-    x = np.array([getFrames(file, m) for file in tqdm(x)]) / 255
-    # x = x.reshape(self.batch_size, self.max_frame_count, 224, 224, 1)
-    b, f, w, h = x.shape
-    x = x.reshape(b, f, w, h, 1)
-    print(x.shape)
-    # %%
-    y = np.array(y)
-    x.shape, y.shape
-    hist = model.fit(x=x, y=y,
-                    epochs=1,
-                    verbose=1,
-                    class_weight=class_weight)
-
-
-    # %%
+                               steps_per_epoch=(len(x_train) // batch_size),
+                               epochs=epochs,
+                               verbose=1,
+                               validation_data=test_generator,
+                               validation_steps=(len(x_test) // batch_size),
+                               class_weight=class_weight,
+                               use_multiprocessing=False)

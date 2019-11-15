@@ -205,7 +205,8 @@ if __name__ == "__main__":
     model.add(Dense(32, activation='relu'))
     model.add(Dense(32, activation='relu'))
     model.add(Dense(1, activation='sigmoid'))
-    model.compile(loss='categorical_crossentropy', optimizer='adadelta')
+    # model.compile(loss='categorical_crossentropy', optimizer='adadelta')
+    model.compile(loss='sparse_categorical_crossentropy', optimizer='adadelta')
     model.summary()
 
     es = tf.keras.callbacks.EarlyStopping(

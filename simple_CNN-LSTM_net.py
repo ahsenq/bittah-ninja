@@ -186,11 +186,9 @@ if __name__ == "__main__":
     len(train_generator), len(test_generator)
 
     input_shape = (None,
-                   train_generator.frame_width,
-                   train_generator.frame_height,
+                   train_generator.w,
+                   train_generator.h,
                    train_generator.n_channels)
-
-    epochs = args.epochs
 
     model = Sequential()
     model.add(ConvLSTM2D(filters=4, kernel_size=(4, 4),
@@ -213,11 +211,14 @@ if __name__ == "__main__":
     model.compile(loss='categorical_crossentropy', optimizer='adadelta')
     model.summary()
 
+    es = tf.keras.callbacks.EarlyStopping(
+        monitor='val_loss', patience=10, restore_best_weights=True)
     hist = model.fit_generator(generator=train_generator,
                                steps_per_epoch=(len(x_train) // batch_size),
-                               epochs=epochs,
+                               epochs=args.epochs,
                                verbose=1,
                                validation_data=test_generator,
                                validation_steps=(len(x_test) // batch_size),
                                class_weight=class_weight,
-                               use_multiprocessing=False)
+                               use_multiprocessing=False,
+                               callbacks=[es])

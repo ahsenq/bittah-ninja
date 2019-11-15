@@ -78,6 +78,8 @@ class DataGenerator(Sequence):
             if pad_frames:
                 if vid.shape[0] < self.max_frame_count:
                     vid = padEmptyFrames(vid)
+                elif vid.shape[0] >= self.max_frame_count:
+                    vid = vid[:self.max_frame_count]
 
             return vid
 
@@ -171,7 +173,8 @@ if __name__ == "__main__":
     print(len(x_train), len(y_train))
     print(len(x_test), len(y_test))
 
-    max_frame_count = getMaxFrameCount(filenames)
+    # max_frame_count = getMaxFrameCount(filenames)
+    max_frame_count = 151
     print('max number of frames: ', max_frame_count)
     train_generator = DataGenerator(x_train,
                                     y_train,

@@ -214,6 +214,15 @@ if __name__ == "__main__":
     # model.compile(loss='sparse_categorical_crossentropy', optimizer='adadelta')
     model.summary()
 
+    cp_dir = os.path.join(args.modelpath, 'checkpoints')
+    os.makedirs(cp_dir, exist_ok=True)
+    cp = tf.keras.callbacks.ModelCheckpoint(
+        filepath=os.path.join(cp_dir, 'mymodel_{epoch}.h5'),
+        monitor='val_loss',
+        save_best_only=True,
+        verbose=1,
+        save_freq=5
+    )
     es = tf.keras.callbacks.EarlyStopping(
         monitor='val_loss', patience=10, restore_best_weights=True)
     hist = model.fit_generator(generator=train_generator,

@@ -172,6 +172,7 @@ if __name__ == "__main__":
     print(len(x_test), len(y_test))
 
     max_frame_count = getMaxFrameCount(filenames)
+    print('max number of frames: ', max_frame_count)
     train_generator = DataGenerator(x_train,
                                     y_train,
                                     batch_size,

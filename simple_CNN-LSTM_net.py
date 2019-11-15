@@ -188,16 +188,16 @@ if __name__ == "__main__":
                    train_generator.n_channels)
 
     model = Sequential()
-    model.add(ConvLSTM2D(filters=4, kernel_size=(4, 4),
+    model.add(ConvLSTM2D(filters=1, kernel_size=(4, 4),
                          input_shape=input_shape, data_format='channels_last',
                          padding='same', return_sequences=True,
                          dropout=0.5, recurrent_dropout=0))
     model.add(BatchNormalization())
-    model.add(ConvLSTM2D(filters=4, kernel_size=(3, 3),
+    model.add(ConvLSTM2D(filters=1, kernel_size=(3, 3),
                          padding='same', return_sequences=True,
                          dropout=0.5, recurrent_dropout=0))
     model.add(BatchNormalization())
-    model.add(ConvLSTM2D(filters=4, kernel_size=(3, 3),
+    model.add(ConvLSTM2D(filters=1, kernel_size=(2, 2),
                          padding='same', return_sequences=False,
                          dropout=0.5, recurrent_dropout=0))
     model.add(BatchNormalization())

@@ -236,5 +236,5 @@ if __name__ == "__main__":
                                    validation_steps=(
                                        len(x_test) // batch_size),
                                    class_weight=class_weight,
-                                   use_multiprocessing=False,
+                                   use_multiprocessing=True,
                                    callbacks=[es, cp])

@@ -193,19 +193,19 @@ if __name__ == "__main__":
     # strategy = tf.distribute.MirroredStrategy()
     # with strategy.scope():
     model = Sequential()
-    model.add(ConvLSTM2D(filters=8, kernel_size=(4, 4),
+    model.add(ConvLSTM2D(filters=4, kernel_size=(4, 4),
                          input_shape=input_shape, data_format='channels_last',
                          padding='same', return_sequences=True,
                          dropout=0.2, recurrent_dropout=0))
     model.add(BatchNormalization())
-    model.add(ConvLSTM2D(filters=8, kernel_size=(3, 3),
-                         padding='same', return_sequences=True,
-                         dropout=0.2, recurrent_dropout=0))
-    model.add(BatchNormalization())
-    model.add(ConvLSTM2D(filters=8, kernel_size=(2, 2),
+    model.add(ConvLSTM2D(filters=4, kernel_size=(3, 3),
                          padding='same', return_sequences=False,
                          dropout=0.2, recurrent_dropout=0))
     model.add(BatchNormalization())
+    # model.add(ConvLSTM2D(filters=4, kernel_size=(2, 2),
+    #                      padding='same', return_sequences=False,
+    #                      dropout=0.2, recurrent_dropout=0))
+    # model.add(BatchNormalization())
     model.add(Flatten())
     model.add(Dense(32, activation='relu'))
     model.add(Dense(32, activation='relu'))

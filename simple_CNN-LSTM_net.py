@@ -190,51 +190,51 @@ if __name__ == "__main__":
                    train_generator.w,
                    train_generator.h,
                    train_generator.n_channels)
-    strategy = tf.distribute.MirroredStrategy()
-    with strategy.scope():
-        model = Sequential()
-        model.add(ConvLSTM2D(filters=8, kernel_size=(4, 4),
-                             input_shape=input_shape, data_format='channels_last',
-                             padding='same', return_sequences=True,
-                             dropout=0.2, recurrent_dropout=0))
-        model.add(BatchNormalization())
-        model.add(ConvLSTM2D(filters=8, kernel_size=(3, 3),
-                             padding='same', return_sequences=True,
-                             dropout=0.2, recurrent_dropout=0))
-        model.add(BatchNormalization())
-        model.add(ConvLSTM2D(filters=8, kernel_size=(2, 2),
-                             padding='same', return_sequences=False,
-                             dropout=0.2, recurrent_dropout=0))
-        model.add(BatchNormalization())
-        model.add(Flatten())
-        model.add(Dense(32, activation='relu'))
-        model.add(Dense(32, activation='relu'))
-        model.add(Dense(32, activation='relu'))
-        model.add(Dropout(0.25))
-        model.add(Dense(len(set(labels)), activation='sigmoid'))
-        model.compile(loss='categorical_crossentropy', optimizer='adadelta')
-        # model.compile(loss='sparse_categorical_crossentropy', optimizer='adadelta')
-        model.summary()
+    # strategy = tf.distribute.MirroredStrategy()
+    # with strategy.scope():
+    model = Sequential()
+    model.add(ConvLSTM2D(filters=8, kernel_size=(4, 4),
+                         input_shape=input_shape, data_format='channels_last',
+                         padding='same', return_sequences=True,
+                         dropout=0.2, recurrent_dropout=0))
+    model.add(BatchNormalization())
+    model.add(ConvLSTM2D(filters=8, kernel_size=(3, 3),
+                         padding='same', return_sequences=True,
+                         dropout=0.2, recurrent_dropout=0))
+    model.add(BatchNormalization())
+    model.add(ConvLSTM2D(filters=8, kernel_size=(2, 2),
+                         padding='same', return_sequences=False,
+                         dropout=0.2, recurrent_dropout=0))
+    model.add(BatchNormalization())
+    model.add(Flatten())
+    model.add(Dense(32, activation='relu'))
+    model.add(Dense(32, activation='relu'))
+    model.add(Dense(32, activation='relu'))
+    model.add(Dropout(0.25))
+    model.add(Dense(len(set(labels)), activation='sigmoid'))
+    model.compile(loss='categorical_crossentropy', optimizer='adadelta')
+    # model.compile(loss='sparse_categorical_crossentropy', optimizer='adadelta')
+    model.summary()
 
-        cp_dir = os.path.join(args.modelpath, 'checkpoints')
-        os.makedirs(cp_dir, exist_ok=True)
-        cp = tf.keras.callbacks.ModelCheckpoint(
-            filepath=os.path.join(cp_dir, 'mymodel_{epoch}.h5'),
-            monitor='val_loss',
-            save_best_only=True,
-            verbose=1,
-            save_freq='epoch'
-        )
-        es = tf.keras.callbacks.EarlyStopping(
-            monitor='val_loss', patience=10, restore_best_weights=True)
-        hist = model.fit_generator(generator=train_generator,
-                                   steps_per_epoch=(
-                                       len(x_train) // batch_size),
-                                   epochs=args.epochs,
-                                   verbose=1,
-                                   validation_data=test_generator,
-                                   validation_steps=(
-                                       len(x_test) // batch_size),
-                                   class_weight=class_weight,
-                                   use_multiprocessing=True,
-                                   callbacks=[es, cp])
+    cp_dir = os.path.join(args.modelpath, 'checkpoints')
+    os.makedirs(cp_dir, exist_ok=True)
+    cp = tf.keras.callbacks.ModelCheckpoint(
+        filepath=os.path.join(cp_dir, 'mymodel_{epoch}.h5'),
+        monitor='val_loss',
+        save_best_only=True,
+        verbose=1,
+        save_freq='epoch'
+    )
+    es = tf.keras.callbacks.EarlyStopping(
+        monitor='val_loss', patience=10, restore_best_weights=True)
+    hist = model.fit_generator(generator=train_generator,
+                               steps_per_epoch=(
+                                   len(x_train) // batch_size),
+                               epochs=args.epochs,
+                               verbose=1,
+                               validation_data=test_generator,
+                               validation_steps=(
+                                   len(x_test) // batch_size),
+                               class_weight=class_weight,
+                               use_multiprocessing=True,
+                               callbacks=[es, cp])

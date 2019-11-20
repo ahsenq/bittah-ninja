@@ -1,9 +1,16 @@
 # %%
+# Only execute if running in container
+# !apt install libsm6 libxext6 libxrender-dev git -y
+# !pip3 install pandas scikit-learn opencv-python tqdm
+
+
+# %%
 import argparse
 import os
 import pickle
 import sys
 from collections import Counter
+from datetime import datetime
 
 import cv2
 import numpy as np
@@ -11,22 +18,14 @@ import pandas as pd
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
-from tensorflow.keras.layers import (BatchNormalization, ConvLSTM2D, Dense,
-                                     Dropout, Flatten)
-from tensorflow.keras.models import Model, Sequential
-from tensorflow.keras.utils import Sequence
 from tqdm import tqdm
 
+from tensorflow import keras
+from tensorflow.keras.layers import (Activation, Conv2D, Dense, Dropout, Flatten,
+                                     MaxPooling2D)
+from tensorflow.keras.models import Model, Sequential
+from tensorflow.keras.utils import Sequence
 # %%
-
-
-def getMaxFrameCount(filenames):
-    frameCount = []
-    for file in tqdm(filenames):
-        cap = cv2.VideoCapture(file)
-        frameCount.append(int(cap.get(cv2.CAP_PROP_FRAME_COUNT)))
-
-    return max(frameCount)
 
 
 class DataGenerator(Sequence):
@@ -35,14 +34,12 @@ class DataGenerator(Sequence):
                  filenames,
                  labels,
                  batch_size,
-                 max_frame_count,
                  frame_height=224,
                  frame_width=224,
                  n_channels=1):
         self.filenames = filenames
         self.labels = labels
         self.batch_size = batch_size
-        self.max_frame_count = max_frame_count
         self.h = frame_height
         self.w = frame_width
         self.n_channels = n_channels
@@ -51,15 +48,7 @@ class DataGenerator(Sequence):
         return np.floor(len(self.filenames) / self.batch_size).astype(int)
 
     def __data_generation(self, idx_list):
-        def padEmptyFrames(vid):
-            num_frames = self.max_frame_count - vid.shape[0]
-            empty_frames = np.empty(
-                (num_frames, vid.shape[1], vid.shape[2]), dtype=np.float16)
-            padded_vid = np.vstack((vid, empty_frames)).astype(np.float16)
-
-            return padded_vid
-
-        def getFrames(filepath, pad_frames=True):
+        def getSingleFrame(filepath):
             cap = cv2.VideoCapture(filepath)
             vid = []
             while cap.isOpened():
@@ -72,31 +61,23 @@ class DataGenerator(Sequence):
                         break
                 else:
                     break
-
             cap.release()
-            vid = np.array(vid)
-            if pad_frames:
-                if vid.shape[0] < self.max_frame_count:
-                    vid = padEmptyFrames(vid)
-                elif vid.shape[0] >= self.max_frame_count:
-                    vid = vid[:self.max_frame_count]
-
-            return vid
+            j = int(np.random.choice(len(vid), 1))
+            frame = vid[j]
+            return frame
 
         x = np.empty((self.batch_size,
-                      self.max_frame_count,
                       self.w,
                       self.h,
                       self.n_channels), dtype=np.float16)
-        y = np.empty((self.batch_size), dtype=np.float16)
+        y = np.empty(self.batch_size, dtype=np.float16)
         for i, idx in enumerate(idx_list):
             file = self.filenames[idx]
-            vid = getFrames(file)
-            vid = vid.reshape(self.max_frame_count,
-                              self.w,
-                              self.h,
-                              self.n_channels)
-            x[i, ] = vid
+            frame = getSingleFrame(file)
+            frame = frame.reshape(self.w,
+                                  self.h,
+                                  self.n_channels)
+            x[i, ] = frame
             y[i, ] = self.labels[idx]
         y = tf.keras.utils.to_categorical(
             y, num_classes=len(set(self.labels)), dtype='float16')
@@ -107,14 +88,13 @@ class DataGenerator(Sequence):
         x, y = self.__data_generation(batch)
         return x, y
 
-
-# %%
 if __name__ == "__main__":
-    assert tf.__version__.startswith(
-        '2'), 'you need to upgrade to tensorflow 2'
-    gpus = tf.config.experimental.list_physical_devices('GPU')
-    for gpu in gpus:
-        tf.config.experimental.set_memory_growth(gpu, True)
+    # %%
+    print(tf.__version__)
+    print("GPUs Available: ", len(tf.config.experimental.list_physical_devices('GPU')))
+
+
+    # %%
     parser = argparse.ArgumentParser()
     parser.add_argument('--vidpath', default='vids/scaled')
     parser.add_argument('--modelpath', default='/data/models')
@@ -125,14 +105,18 @@ if __name__ == "__main__":
     try:
         args = parser.parse_args()
     except:
-        args = parser.parse_args(
-            ['--vidpath=/data/vids/scaled', '--use_cache'])
+        # may need to modify vidpath depending on where you are running the script
+        #     args = parser.parse_args(['--vidpath=/tf/data/vids/scaled', '--batch_size=4'])
+        args = parser.parse_args(['--vidpath=/data/vids/scaled', '--use_cache'])
     print(args)
 
+    # %%
+    # labelPath = 'bittah-ninja/first_1k_labeled_long_vids_removed.csv'
     labelPath = args.labelpath
+    # labelPath = 'full_labels.csv'
     df = pd.read_csv(labelPath)
     df.head()
-
+    # %%
     new_files = []
     for file in df.clip_title:
         newfile = ''.join(file.split('.mp4')) + '.mp4'
@@ -141,18 +125,26 @@ if __name__ == "__main__":
     df['label'] = df['class']
     df.drop(columns=['class'], inplace=True)
     df.groupby('label').size()
-
+    # %%
     df = df.loc[df.label != -1]
     df = df.loc[df.label != 99]
     df.groupby('label').size()
 
+    # %%
+    # df['punch'] = (df.label != 0).astype('int')
+    # df.groupby('punch').size()
+    # %%
     vidPath = args.vidpath
     filenames = [f.split('.mp4')[0] + '_scaled.mp4' for f in df.clip_title]
     filenames = [os.path.join(vidPath, f) for f in filenames]
+    # labels = df.punch.tolist()
     labels = df.label.tolist()
+
+    # %%
     batch_size = args.batch_size
     class_weight = compute_class_weight('balanced', np.unique(labels), labels)
 
+    # %%
     if args.use_cache:
         print('using cached train and test sets')
         with open(os.path.join(args.modelpath, f'train.pickle'), 'rb') as f:
@@ -162,7 +154,8 @@ if __name__ == "__main__":
     else:
         x_train, x_test, y_train, y_test = train_test_split(
             filenames, labels, test_size=0.2)
-
+        # print(len(x_train), len(y_train))
+        # print(len(x_test), len(y_test))
         modelpath = args.modelpath
         os.makedirs(modelpath, exist_ok=True)
         with open(os.path.join(modelpath, f'train.pickle'), 'wb') as f:
@@ -170,71 +163,55 @@ if __name__ == "__main__":
         with open(os.path.join(modelpath, f'test.pickle'), 'wb') as f:
             pickle.dump((x_test, y_test), f, protocol=-1)
 
-    print(len(x_train), len(y_train))
-    print(len(x_test), len(y_test))
-
-    # max_frame_count = getMaxFrameCount(filenames)
-    max_frame_count = 151
-    print('max number of frames: ', max_frame_count)
-    train_generator = DataGenerator(x_train,
-                                    y_train,
-                                    batch_size,
-                                    max_frame_count)
-    test_generator = DataGenerator(x_test,
-                                   y_test,
-                                   batch_size,
-                                   max_frame_count)
+    # %%
+    train_generator = DataGenerator(x_train, y_train, batch_size)
+    test_generator = DataGenerator(x_test, y_test, batch_size)
     len(train_generator), len(test_generator)
 
-    input_shape = (None,
-                   train_generator.w,
-                   train_generator.h,
-                   train_generator.n_channels)
-    # strategy = tf.distribute.MirroredStrategy()
-    # with strategy.scope():
-    model = Sequential()
-    model.add(ConvLSTM2D(filters=8, kernel_size=(4, 4),
-                         input_shape=input_shape, data_format='channels_last',
-                         padding='same', return_sequences=True,
-                         dropout=0.2, recurrent_dropout=0))
-    model.add(BatchNormalization())
-    model.add(ConvLSTM2D(filters=8, kernel_size=(3, 3),
-                         padding='same', return_sequences=True,
-                         dropout=0.2, recurrent_dropout=0))
-    model.add(BatchNormalization())
-    model.add(ConvLSTM2D(filters=8, kernel_size=(2, 2),
-                         padding='same', return_sequences=False,
-                         dropout=0.2, recurrent_dropout=0))
-    model.add(BatchNormalization())
-    model.add(Flatten())
-    model.add(Dense(32, activation='relu'))
-    model.add(Dense(32, activation='relu'))
-    model.add(Dense(32, activation='relu'))
-    model.add(Dropout(0.25))
-    model.add(Dense(len(set(labels)), activation='sigmoid'))
-    model.compile(loss='categorical_crossentropy', optimizer='adadelta')
-    # model.compile(loss='sparse_categorical_crossentropy', optimizer='adadelta')
+    # %%
+    input_shape = (224, 224, 1)
+    epochs = args.epochs
+    inputs = keras.layers.Input(shape=input_shape, name='inputs')
+    conv = Conv2D(32, (3, 3), activation='relu', padding='same')(inputs)
+    pool = MaxPooling2D(pool_size=(2, 2))(conv)
+    conv = Conv2D(32, (3, 3), activation='relu', padding='same')(pool)
+    pool = MaxPooling2D(pool_size=(2, 2))(conv)
+    # dropout = Dropout(0.25)(pool)
+    conv = Conv2D(32, (4, 4), activation='relu', padding='same')(pool)
+    pool = MaxPooling2D(pool_size=(2, 2))(conv)
+    conv = Conv2D(32, (4, 4), activation='relu', padding='same')(pool)
+    pool = MaxPooling2D(pool_size=(2, 2))(conv)
+    dropout = Dropout(0.5)(pool)
+    flat = Flatten()(dropout)
+    dense = Dense(16, activation='relu')(flat)
+    dropout = Dropout(0.25)(dense)
+    outputs = Dense(len(set(labels)), activation='softmax',
+                    name='outputs')(dropout)
+    model = Model(inputs, outputs)
+
+    model.compile(loss='categorical_crossentropy', optimizer='adam')
     model.summary()
 
-    cp_dir = os.path.join(args.modelpath, 'checkpoints')
-    os.makedirs(cp_dir, exist_ok=True)
-    cp = tf.keras.callbacks.ModelCheckpoint(
-        filepath=os.path.join(cp_dir, 'mymodel_{epoch}.h5'),
-        monitor='val_loss',
-        save_best_only=True,
-        verbose=1,
-        save_freq='epoch'
-    )
-    es = tf.keras.callbacks.EarlyStopping(
+
+    # %%
+    es = keras.callbacks.EarlyStopping(
         monitor='val_loss', patience=10, restore_best_weights=True)
     hist = model.fit_generator(generator=train_generator,
-                               steps_per_epoch=(
-                                   len(x_train) // batch_size),
+                               steps_per_epoch=(len(x_train) // batch_size),
                                epochs=args.epochs,
                                verbose=1,
                                validation_data=test_generator,
-                               validation_steps=(
-                                   len(x_test) // batch_size),
+                               validation_steps=(len(x_test) // batch_size),
+                               shuffle=False,
                                class_weight=class_weight,
                                use_multiprocessing=False,
-                               callbacks=[es, cp])
+                               callbacks=[es])
+
+
+    # %%
+    dt = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # modelpath = args.modelpath
+    # os.makedirs(modelpath, exist_ok=True)
+    model.save(os.path.join(modelpath, f'simpleCNN_{args.epochs}epochs_{dt}.h5'))
+    with open(os.path.join(modelpath, f'simpleCNN_history_{args.epochs}epochs_{dt}.pickle'), 'wb') as f:
+        pickle.dump(hist.history, f, protocol=-1)

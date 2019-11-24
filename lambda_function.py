@@ -9,30 +9,36 @@ from boto3.dynamodb.conditions import Attr, Key
 N = 3 # number of video files to be returned in tables of top N
 
 def fetch_ruid(table):
+    # Returns a random video ID
     playable_uid_list = table.scan(ProjectionExpression='id')
     # FUTURE: add filter for Attr approved videos if users will upload
     x = random.choice(list(playable_uid_list['Items']))
     return int(x['id'])
 
 def fetch_file(vuid,table):
+    # Returns model's video filename, given its unique ID
     response = table.get_item(Key={'id': str(vuid)}) 
     return(response['Item']['clip_title'])
 
 def fetch_prediction(vuid,table):
+    # Returns model's predicted class for this clip
     response = table.get_item(Key={'id': str(vuid)})
     return(response['Item']['pred_class'])
 
 def fetch_model_proba(vuid,table):
+    # Returns probability of predicted class from model
     response = table.get_item(Key={'id': str(vuid)})
     return(response['Item']['pred_class_proba'])
     
 def log_playback(vuid,time,table):
+    # Sets the timestamp of most recent video play
     response = table.get_item(Key={'id': str(vuid)})
     table.update_item(Key={'id': str(vuid)},\
         UpdateExpression='SET recent_play = :val1',\
         ExpressionAttributeValues={':val1': time})
 
 def fetch_recent_N(client,index,table):
+    # Returns a list of N clips played recently (most for rewatching purposes)
     response = client.scan(
         TableName=table.name,
         IndexName=index,
@@ -42,6 +48,7 @@ def fetch_recent_N(client,index,table):
     return(result)
 
 def update_portions(vuid,count_nope,count_punch,table):
+    # Used by vote incrementing functions
     new_pct_punch = Decimal(str(count_punch/(count_nope + count_punch)))
     table.update_item(Key={'id': str(vuid)},\
         UpdateExpression='SET portion_humans_saw_punch = :punch_vote',\
@@ -52,6 +59,8 @@ def update_portions(vuid,count_nope,count_punch,table):
         ExpressionAttributeValues={':none_vote': new_pct_none})
 
 def increment_punch_vote(vuid,table):
+    # Logs when human says clip did contain a punch
+    # Updates the tally, the vote percentage, and the human consensus as needed
     record = table.get_item(Key={'id': str(vuid)})
     
     # update humans who voted punch
@@ -78,6 +87,8 @@ def increment_punch_vote(vuid,table):
     return(table.get_item(Key={'id': str(vuid)}))
     
 def increment_none_vote(vuid,table):
+    # Logs when human says clip did not contain a punch
+    # Updates the tally, the vote percentage, and the human consensus as needed
     record = table.get_item(Key={'id': str(vuid)})
     
     # update humans who voted no-punch
@@ -102,6 +113,16 @@ def increment_none_vote(vuid,table):
     update_portions(vuid, new_none_tally,punch_tally,table)
     
     return(table.get_item(Key={'id': str(vuid)}))
+    
+def fetch_ambiguous(table):
+    # Returns list of clips where between 40-60% of humans saw a punch
+    distance = Decimal('0.1')
+    fe = Attr('portion_humans_saw_punch').between(Decimal('0.5')-distance,\
+        Decimal('0.5')+distance)
+    pe = "clip_title,portion_humans_saw_punch"
+    response = table.scan(ProjectionExpression=pe,FilterExpression=fe)
+    items = response['Items']
+    return [{i["clip_title"]:i["portion_humans_saw_punch"]} for i in items]
 
 def lambda_handler(event, context):
     result = None
@@ -135,8 +156,9 @@ def lambda_handler(event, context):
         vuid = event.get('id',0)
         increment_none_vote(vuid,table)
         result = "logged none vote"
+    elif 'ambiguous' in event.get('action',''):
+        result = fetch_ambiguous(table)
     return {
         'statusCode': 200,
         'body': result
     }
-

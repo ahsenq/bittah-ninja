@@ -123,7 +123,23 @@ def fetch_ambiguous(table):
     response = table.scan(ProjectionExpression=pe,FilterExpression=fe)
     items = response['Items']
     return [{i["clip_title"]:i["portion_humans_saw_punch"]} for i in items]
-
+    
+def fetch_human_stats(vuid,table):
+    # Returns human_consensus (no-punch=0,punch=1),pct_humans_saw_punch & count_humans_saw_punch
+    pe = "human_consensus,portion_humans_saw_punch,num_humans_saw_punch"
+    response = table.get_item(Key={'id': str(vuid)},ProjectionExpression=pe) 
+    return(response['Item'])
+    
+# def fetch_confident_correct(table):
+#     # Returns clips where prediction = groundtruth and model proba >X%
+#     confident = Decimal('0.7')
+#     pe = "clip_title,gt_class,pred_class,pred_class_proba"
+#     fe = Attr('pred_class_proba').gt(confident) & Attr('gt_class').eq(Attr('pred_class'))
+#     response = table.scan(ProjectionExpression=pe,FilterExpression=fe)
+#     items = response['Items']
+#     return items
+    # Above isn't working because predicted class probability is string, not number
+    
 def lambda_handler(event, context):
     result = None
     now = datetime.datetime.timestamp(datetime.datetime.utcnow())
@@ -158,6 +174,11 @@ def lambda_handler(event, context):
         result = "logged none vote"
     elif 'ambiguous' in event.get('action',''):
         result = fetch_ambiguous(table)
+    elif 'stats' in event.get('action',''):
+        vuid = event.get('id',0)
+        result = fetch_human_stats(vuid,table)
+    # elif 'correct' in event.get('action',''):
+    #     result = fetch_confident_correct(table)
     return {
         'statusCode': 200,
         'body': result
